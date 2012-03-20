@@ -12,14 +12,16 @@
 '''
 import math
 
+#----------------------- Numerical methods needed in the library---------------
 class NRB:
     '''
-    Root finding using Newton-Raphson method combined with the bisection.
+    Root finding using Newton-Raphson-Bisection, the method should safe and fast.
+    IE: tends to quadratic convergence and to be unconditionally stable.
     
     USAGE:
     
         >>> import CPROP
-        >>> NR = CPROP.NRB(func, dfunc, x, TOL=1e-8)
+        >>> NR = CPROP.NRB(func, dfunc, xmin, xmax, TOL=1e-8)
         >>> NR.solve()
 
     '''
@@ -37,7 +39,7 @@ class NRB:
         fb = self.func(self.b)
         if (fb == 0.0): return self.b
         x = 0.5*(self.a+self.b)
-        count = 0 
+        count = 0
         while count < 1001:
             fx = self.func(x)
             if abs(fx) < self.TOL: return x
@@ -51,7 +53,7 @@ class NRB:
             try: dx = - fx/float(dfx)
             except ZeroDivisionError: dx = self.b-self.a
             x = x + dx
-            #If the result is outside the brackets, use bisection
+            #If the result is outside the brackets, use a bisection step
             if (self.b - x)*(x - self.a) < 0.0:
                 dx = 0.5*(self.b-self.a)
                 x = self.a + dx
@@ -231,12 +233,31 @@ class MartinHou(NRB):
         s_c = self.sc(1., 1.)       
 
         return self.s(T, rho) - s_c
+        
+#---------------------------- Transport and others properties -----------------
 
-#------------------------------------ Fluids ---------------------------------------
+class NormalFluid:
+    '''
+    Class that defines a normal fluid transport and other properties.
+    
+    '''
+    
+    def sigma(self, T):
+        '''
+        Compute the Surface tension using Sastri and Rao equation
+        
+        '''
+        SR = self.sK*(self.Pc**self.sX)*(self.Tb**self.sY)*(self.Tc**self.sZ)
+        Tr = T/self.Tc
+        Tbr = self.Tb/self.Tc
+        return SR*(((1-Tr)/(1-Tbr))**self.sm)
 
-class R134a(MartinHou):
+#------------------------------------ Fluids ----------------------------------
+
+class R134a(MartinHou, NormalFluid):
     '''
     Implementation of R134 (HFC-134a) fluid using Martin-Hou equation of state.
+    Inherits from Martin-Hou EoS and NormalFluid transport properties
          
     '''
 
@@ -247,17 +268,19 @@ class R134a(MartinHou):
         DuPond site Povides datasheets for the fluid with all the needed constants.
         '''
 
-        ## Initiate MAH constants for all methods
+        ## Cnstants for R134a - From DuPont datasheet
         self.MW = 102.03 #[g/mol] - molecular weight
         self.bpatm = 247.09 #[K] - boiling point at one atm
         self.Tc = 374.23 #[K] - critical temperature
         self.Pc = 4060.3 #[kPa] - critical Pessure
         self.rhoc = 515.3 #[kg/m3] - critical density
         self.volc =  0.00194 #[m3/kg] - critical volume
+        self.Tb = 247.09 #[K] - Normal boiling point (at 1 atm)
         self.R = 0.0815 #[kJ/kg*K] - gas constant
         self.hf = 200 #[kJ/kg] - reference enthalpy at 273.15K
         self.sf = 1 #[kJ/kg*K] - reference enTopy at 273.15K
-        # E.o.s. constants, ex: A = [A2, A3, A4, A5]
+        
+        # EoS constants, for R134a it is Martin-Hou, ex: A = [A2, A3, A4, A5]
         self.A = [-8.909485e-2, -1.016882e-3, 1.778071e-5, -7.481440e-8]
         self.B = [4.408654e-5, 2.574527e-6, -4.016976e-8, 1.670285e-10]
         self.C = [-2.074834, 2.142829e-2, -2.977911e-4, 1.255922e-6]
