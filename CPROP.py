@@ -87,9 +87,9 @@ class MartinHou(NRB):
 
         USAGE:
 
-        >>> import CPROP
-        >>> mh = CPROP.MartinHou('HFC-134a')
-        >>> mh.Cv0(Temperature_in_K)
+        >>> from CPROP import R134a
+        >>> r = R134a()
+        >>> r.Cv0(T)
 
         '''
 
@@ -97,13 +97,13 @@ class MartinHou(NRB):
       
     def Psat(self, T):
         '''
-        Calculate the Vapor Pessure as a function of temperature.
+        Calculate the Vapor Pessure as a function of temperature (T [K]).
 
         USAGE:
 
-        >>> import CPROP
-        >>> mh = CPROP.MartinHou('HFC-134a')
-        >>> mh.Psat(Temperature_in_K)
+        >>> from CPROP import R134a
+        >>> r = R134a()
+        >>> r.Psat(T)
 
         '''
         return 10**(self.pA + self.pB/T + self.pC*math.log10(T) + self.pD*T + \
@@ -111,14 +111,13 @@ class MartinHou(NRB):
 
     def rhof(self, T):
         '''
-        Calculate the Density of the Saturated Liquid
-        as a function of temperature (T [K]).
+        Calculate the Density of the Saturated Liquid as a function of temperature (T [K]).
 
         USAGE:
 
-        >>> import CPROP
-        >>> mh = CPROP.MartinHou('HFC-134a')
-        >>> mh.df(T)
+        >>> from CPROP import R134a
+        >>> r = R134a()
+        >>> r.rhof(T)
 
         '''
         Tr = T/self.Tc
@@ -135,9 +134,9 @@ class MartinHou(NRB):
 
         USAGE:
         
-        >>> import CPROP
-        >>> mh = CPROP.MartinHou('HFC-134a')
-        >>> mh.p(T, v)
+        >>> from CPROP import R134a
+        >>> r = R134a()
+        >>> r.P(T, v)
         
         '''
         
@@ -158,9 +157,9 @@ class MartinHou(NRB):
 
         USAGE:
         
-        >>> import CPROP
-        >>> mh = CPROP.MartinHou('HFC-134a')
-        >>> mh.rho(T, P)
+        >>> from CPROP import R134a
+        >>> r = R134a()
+        >>> r.rho(T, P)
 
         '''
         Tr = T/self.Tc
@@ -204,9 +203,9 @@ class MartinHou(NRB):
 
         USAGE:
 
-        >>> import CPROP
-        >>> mh = CPROP.MartinHou(fdon_loc)
-        >>> mh.s(T, rho)
+        >>> from CPROP import R134a
+        >>> r = R134a()
+        >>> r.s(T, rho)
               
         '''
         Tr = T/self.Tc
@@ -224,9 +223,9 @@ class MartinHou(NRB):
 
         USAGE:
 
-        >>> import CPROP
-        >>> mh = CPROP.MartinHou(fdon_loc)
-        >>> mh.snormcalc(T, rho)
+        >>> from CPROP import R134a
+        >>> r = R134a()
+        >>> r.snorm(T, rho)
                 
         '''
         # Normalise with the enTopy at critical point (s_c)
@@ -236,25 +235,60 @@ class MartinHou(NRB):
         
 #---------------------------- Transport and others properties -----------------
 
-class NormalFluid:
+class BaseFluid:
     '''
     Class that defines a normal fluid transport and other properties.
     
     '''
     
-    def sigma(self, T):
+    def sig(self, T):
         '''
-        Compute the Surface tension using Sastri and Rao equation
+        Compute the Surface Tension as function of temperature (T [K]).
+        Uses the Sastri and Rao (1995) equation.
+
+        USAGE:
+
+        >>> from CPROP import R134a
+        >>> r = R134a()
+        >>> r.sig(T)
         
         '''
-        SR = self.sK*(self.Pc**self.sX)*(self.Tb**self.sY)*(self.Tc**self.sZ)
+        SR = self.sK*((self.Pc*0.01)**self.sX)*(self.Tb**self.sY)*(self.Tc**self.sZ)
         Tr = T/self.Tc
         Tbr = self.Tb/self.Tc
         return SR*(((1-Tr)/(1-Tbr))**self.sm)
 
+    def eta(self, T, P):
+        '''
+        Compute viscosity (eta [mN/m]) as function of temperature (T [K]) and pressure (P [kPa]).
+        Uses the Chung, et al. (1988) method.
+
+        USAGE:
+
+        >>> from CPROP import R134a
+        >>> r = R134a()
+        >>> r.nu(T, P)
+        
+        '''
+        Vcmol = self.Vc*1e6/(1000/self.MW)
+        
+        def mur(self):
+            """Compute the reduced dipole moment (mu [D])"""
+            return 131.3*(self.mu)/((self.Vcmol*self.Tc)**0.5)
+        
+        def etaSS(self):
+            """Compute eta**"""
+            return 
+        
+        def etaS(self):
+            """Compute eta*"""
+            return
+
+        return
+
 #------------------------------------ Fluids ----------------------------------
 
-class R134a(MartinHou, NormalFluid):
+class R134a(MartinHou, BaseFluid):
     '''
     Implementation of R134 (HFC-134a) fluid using Martin-Hou equation of state.
     Inherits from Martin-Hou EoS and NormalFluid transport properties
@@ -270,16 +304,16 @@ class R134a(MartinHou, NormalFluid):
 
         ## Cnstants for R134a - From DuPont datasheet
         self.MW = 102.03 #[g/mol] - molecular weight
-        self.bpatm = 247.09 #[K] - boiling point at one atm
+        self.Tb = 247.076 #[K] - Normal boiling point (at 1 atm)
         self.Tc = 374.23 #[K] - critical temperature
         self.Pc = 4060.3 #[kPa] - critical Pessure
         self.rhoc = 515.3 #[kg/m3] - critical density
         self.volc =  0.00194 #[m3/kg] - critical volume
-        self.Tb = 247.09 #[K] - Normal boiling point (at 1 atm)
         self.R = 0.0815 #[kJ/kg*K] - gas constant
+        self.omega = 0.32684 #acentric factor
+        self.Tt = 169.85 #triple point temperature [K]
         self.hf = 200 #[kJ/kg] - reference enthalpy at 273.15K
         self.sf = 1 #[kJ/kg*K] - reference enTopy at 273.15K
-        
         # EoS constants, for R134a it is Martin-Hou, ex: A = [A2, A3, A4, A5]
         self.A = [-8.909485e-2, -1.016882e-3, 1.778071e-5, -7.481440e-8]
         self.B = [4.408654e-5, 2.574527e-6, -4.016976e-8, 1.670285e-10]
@@ -305,3 +339,11 @@ class R134a(MartinHou, NormalFluid):
         self.Cf = 1.028676e+3
         self.Df = -9.491172e+2
         self.Ef = 5.935660e+2
+        #Surface Tension constants - From CGC optimization
+        self.sK = 0.15835
+        self.sX = 0.53
+        self.sY = -1.45
+        self.sZ = 1.79
+        self.sm = 1.26
+        #Dipole moment
+        self.mu = 2.058
