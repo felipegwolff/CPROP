@@ -22,6 +22,7 @@
 *.so
 *.jar
 *.pyc
+*.DS_[Ss]tore
 
 # derived files
 lex.yy.c
