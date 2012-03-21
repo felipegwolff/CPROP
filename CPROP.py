@@ -278,6 +278,24 @@ class Refrigerant:
 
         pass
 
+    def kappa(self, T, P): #TODO!
+        '''
+        Model from: Model for the Viscosity and Thermal Conductivity of Refrigerants,
+        Including a New Correlation for the Viscosity of R134a.
+        Marcia L. Huber,* Arno Laesecke, and Richard A. Perkins
+
+        Ind. Eng. Chem. Res. 2003, 42, 3163-3178
+
+        USAGE:
+
+        >>> from CPROP import R134a
+        >>> r = R134a()
+        >>> r.kappa(T, P)
+
+        '''
+
+        pass
+
 #------------------------------------ Fluids ----------------------------------
 
 class R134a(MartinHou, Refrigerant):
@@ -304,9 +322,8 @@ class R134a(MartinHou, Refrigerant):
         self.rhoc = 511.9 #[kg/m3] - critical density
         self.R = 0.0815 #[kJ/kg*K] - gas constant
         self.omega = 0.32684 #Acentric factor
-        self.kappa = 0.0 #Association factor
         self.sigma = 0.468932# [nm] minimum Leonard-Jones potential
-        self.EpByKap = 299.363 #[K] Lennard-Jones coefficient epsilon/kappa
+        self.EpByKap = 299.363 #[K] Lennard-Jones coefficient e/k
         self.mu = 2.058 #Dipole moment
         self.Tt = 169.85 #triple point temperature [K]
         self.hf = 200 #[kJ/kg] - reference enthalpy at 273.15K
@@ -348,14 +365,33 @@ class R134a(MartinHou, Refrigerant):
         Tr = T/self.Tc
         ## Verify if it is fluid
         if(Tr <1.0 and P >= self.Psat(T)):
-            if((T>=216.15) and (T<=366.15)):
-                return -0.0002191*((T-273.15)**3)+0.039304*((T-273.15)**2)- \
-                        3.6494*(T-273.15)+267.67
+            return -0.0002191*((T-273.15)**3)+0.039304*((T-273.15)**2)- \
+                    3.6494*(T-273.15)+267.67
         
         else:
-            if((T>=290.15) and (T<=422.15)):
-                return 11.021+0.038599*(T-273.15)
+            return 11.021+0.038599*(T-273.15)
 
-    # Just overide the eta from Refrigerants for R134a - Sorry guys, deadline comming :'(
+    # Just overide the eta from Refrigerants for R134a - Sorry, deadline comming :'(
     def eta(self, T, P): 
         return self.etaRef(T, P)
+
+    # Just overide the kappa from Refrigerants for R134a - Sorry, deadline comming :'(
+    def kappa(self, T, P):
+        Tr = T/self.Tc
+        ## Verify if it is fluid
+        if(Tr <1.0 and P >= self.Psat(T)):
+            return (0.09537-0.000517*(T-273.15))*0.99
+        else:
+            return (0.01212+0.000096*(T-273.15))*0.99
+
+    # Need to integrate relations and so on from Eos - Sorry, deadline comming :'(
+    def cp(self, T, P):
+        Tr = T/self.Tc
+        ## Verify if it is fluid
+        if(Tr <1.0 and P >= self.Psat(T)):
+            if(T<=348.15):
+                return 1.327+0.005509*(T-273.15)
+            else:
+                return math.exp(1979.525 - 374.95752*math.log(T-273.15)- \
+                        (24459.904)/(T-273.15) -1.62846*(T-273.15) + \
+                        0.015674*((T-273.15)**2))
