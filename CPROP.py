@@ -25,7 +25,7 @@ class NRB:
         >>> NR.solve()
 
     '''
-    
+
     def __init__(self, func, dfunc, xmin, xmax, TOL=1e-8):
         self.func = func
         self.dfunc = dfunc
@@ -236,12 +236,12 @@ class MartinHou(NRB):
         
 #---------------------------- Transport and others properties -----------------
 
-class BaseFluid:
+class Refrigerant:
     '''
     Class that defines a normal fluid transport and other properties.
     
     '''
-    
+
     def sig(self, T):
         '''
         Compute the Surface Tension as function of temperature (T [K]).
@@ -260,10 +260,13 @@ class BaseFluid:
         Tbr = self.Tb/self.Tc
         return SR*(((1-Tr)/(1-Tbr))**self.sm)
 
-    def eta(self, T, P):
+    def eta(self, T, P): #TODO!
         '''
-        Compute viscosity (eta [mN/m]) as function of temperature (T [K]) and pressure (P [kPa]).
-        Uses the Chung, et al. (1988) method.
+        Model from: Model for the Viscosity and Thermal Conductivity of Refrigerants,
+        Including a New Correlation for the Viscosity of R134a.
+        Marcia L. Huber,* Arno Laesecke, and Richard A. Perkins
+        
+        Ind. Eng. Chem. Res. 2003, 42, 3163-3178
 
         USAGE:
 
@@ -273,40 +276,11 @@ class BaseFluid:
         
         '''
 
-        Ts=1.2593*(T/self.Tc)
-        Vcmol = self.Vc*1e6/(1000/self.MW)
-        rhomol = self.rho(T, P)*(1000/self.MW)/1e6
-        y = rhomol*Vcmol/6
-        mur = 131.3*(self.mu)/((Vcmol*self.Tc)**0.5)
-        E1 = 6.324 +50.412*self.omega -51.680*(mur**4) +1189.0*self.kappa
-        E2 = 1.21e-3 -1.154e-3*self.omega -6.257e-3*(mur**4) +0.03728*self.kappa
-        E3 = 5.283 +254.209*self.omega -168.48*(mur**4) +3898.0*self.kappa
-        E4 = 6.623 +38.096*self.omega -8.464*(mur**4) +31.42*self.kappa
-        E5 = 19.745 +7.630*self.omega -14.354*(mur**4) +31.53*self.kappa
-        E6 = -1.9 -12.537*self.omega +4.985*(mur**4) -18.15*self.kappa
-        E7 = 24.275 +3.450*self.omega -11.291*(mur**4) +69.35*self.kappa
-        E8 = 0.7972 +1.117*self.omega +0.01235*(mur**4) -4.117*self.kappa
-        E9 = -0.2382 +0.06770*self.omega -0.8163*(mur**4) +4.025*self.kappa
-        E10 = 0.06863 +0.3479*self.omega +0.5926*(mur**4) -0.727*self.kappa
-        G1 = (1-(0.5*y))/((1-y)**3)        
-        G2 = (E1*((1-math.exp(-E4*y))/y)+E2*G1*math.exp(E5*y)+E3*G1)/(E1*E4+E2+E3)
-        omegav = 1.16145*(Ts**-0.14874) + 0.52487*math.exp(-0.77320*Ts)+ \
-                 2.16178*math.exp(-2.43787*Ts)
-        Fc = 1 -0.2756*self.omega +0.059035*(mur**4) + self.kappa
-        
-        def etaSS():
-            """Compute eta**"""
-            return  E7*(y**2)*G2*math.exp(E8+E9/Ts + E10/(Ts**2))
-        
-        def etaS():
-            """Compute eta*"""
-            return (Ts**0.5/omegav)*(Fc*(1/G2 + E6*y)) + etaSS()
-
-        return etaS()*36.344*((self.MW*self.Tc)**0.5)/(Vcmol**2/3.)
+        pass
 
 #------------------------------------ Fluids ----------------------------------
 
-class R134a(MartinHou, BaseFluid):
+class R134a(MartinHou, Refrigerant):
     '''
     Implementation of R134 (HFC-134a) fluid using Martin-Hou equation of state.
     Inherits from Martin-Hou EoS and NormalFluid transport properties
@@ -319,17 +293,21 @@ class R134a(MartinHou, BaseFluid):
         fluid just copy and paste the "if" condition and replace the constants. The
         DuPond site Povides datasheets for the fluid with all the needed constants.
         '''
-
+        self.kb = 1.380648813e-23 #Boltzman constant in SI [J/K]
+        self.Na = 6.0221412927e-23 #Avogrado constant [mol^-1]
         ## Cnstants for R134a - From DuPont datasheet
         self.MW = 102.03 #[g/mol] - molecular weight
         self.Tb = 247.076 #[K] - Normal boiling point (at 1 atm)
         self.Tc = 374.23 #[K] - critical temperature
         self.Pc = 4060.3 #[kPa] - critical Pessure
         self.Vc =  0.00194 #[m3/kg] - critical volume
-        self.rhoc = 515.3 #[kg/m3] - critical density
+        self.rhoc = 511.9 #[kg/m3] - critical density
         self.R = 0.0815 #[kJ/kg*K] - gas constant
         self.omega = 0.32684 #Acentric factor
-        self.kappa = 0.174823 #Association factor
+        self.kappa = 0.0 #Association factor
+        self.sigma = 0.468932# [nm] minimum Leonard-Jones potential
+        self.EpByKap = 299.363 #[K] Lennard-Jones coefficient epsilon/kappa
+        self.mu = 2.058 #Dipole moment
         self.Tt = 169.85 #triple point temperature [K]
         self.hf = 200 #[kJ/kg] - reference enthalpy at 273.15K
         self.sf = 1 #[kJ/kg*K] - reference enTopy at 273.15K
@@ -364,5 +342,20 @@ class R134a(MartinHou, BaseFluid):
         self.sY = -1.45
         self.sZ = 1.79
         self.sm = 1.26
-        #Dipole moment
-        self.mu = 2.058
+
+    # Need to improve to acound pressure effects - Implement paper in class Refrigerants
+    def etaRef(self, T, P):
+        Tr = T/self.Tc
+        ## Verify if it is fluid
+        if(Tr <1.0 and P >= self.Psat(T)):
+            if((T>=216.15) and (T<=366.15)):
+                return -0.0002191*((T-273.15)**3)+0.039304*((T-273.15)**2)- \
+                        3.6494*(T-273.15)+267.67
+        
+        else:
+            if((T>=290.15) and (T<=422.15)):
+                return 11.021+0.038599*(T-273.15)
+
+    # Just overide the eta from Refrigerants for R134a - Sorry guys, deadline comming :'(
+    def eta(self, T, P): 
+        return self.etaRef(T, P)
