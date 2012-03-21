@@ -93,8 +93,22 @@ class MartinHou(NRB):
 
         '''
 
-        return self.cva+self.cvb*T+self.cvc*(T**2)+self.cvd*(T**3)+(self.cvf/(T**2))
-      
+        return self.Cp0(T) - self.R
+    
+    def Cp0(self, T):
+        '''
+        Calculate the ideal Gas Heat Capacity (at constant pressure), as a function
+        of temperature.
+
+        USAGE:
+
+        >>> from CPROP import R134a
+        >>> r = R134a()
+        >>> r.Cp0(T)
+
+        '''
+        return self.D1+self.D2*T+self.D3*T**2+self.D4*T**3+self.D5/T
+
     def Psat(self, T):
         '''
         Calculate the Vapor Pessure as a function of temperature (T [K]).
@@ -314,10 +328,10 @@ class R134a(MartinHou, Refrigerant):
         self.kb = 1.380648813e-23 #Boltzman constant in SI [J/K]
         self.Na = 6.0221412927e-23 #Avogrado constant [mol^-1]
         ## Cnstants for R134a - From DuPont datasheet
-        self.MW = 102.03 #[g/mol] - molecular weight
+        self.MW = 102.032 #[g/mol] - molecular weight
         self.Tb = 247.076 #[K] - Normal boiling point (at 1 atm)
-        self.Tc = 374.23 #[K] - critical temperature
-        self.Pc = 4060.3 #[kPa] - critical Pessure
+        self.Tc = 374.2 #[K] - critical temperature
+        self.Pc = 4059.28 #[kPa] - critical Pessure
         self.Vc =  0.00194 #[m3/kg] - critical volume
         self.rhoc = 511.9 #[kg/m3] - critical density
         self.R = 0.0815 #[kJ/kg*K] - gas constant
@@ -335,11 +349,11 @@ class R134a(MartinHou, Refrigerant):
         self.Pb = 3.755677e-4
         self.Pk = 4.599967
         #Ideal Gas Heat Capacity constants
-        self.cva = 3.154856
-        self.cvb = -1.656054e-2
-        self.cvc = 4.353378e-5
-        self.cvd = -3.754497e-8
-        self.cvf = -3.023189e+4
+        self.D1 = 2.49202e-1
+        self.D2 = 2.45251e-3
+        self.D3 = -1.65650e-6
+        self.D4 = 8.91048e-10
+        self.D5 = -6.96764
         #Vapor Pessure constants
         self.pA = 4.069889e+1
         self.pB = -2.362540e+3
@@ -360,22 +374,20 @@ class R134a(MartinHou, Refrigerant):
         self.sZ = 1.79
         self.sm = 1.26
 
-    # Need to improve to acound pressure effects - Implement paper in class Refrigerants
     def etaRef(self, T, P):
         Tr = T/self.Tc
+        tau = T-273.15
         ## Verify if it is fluid
         if(Tr <1.0 and P >= self.Psat(T)):
-            return -0.0002191*((T-273.15)**3)+0.039304*((T-273.15)**2)- \
-                    3.6494*(T-273.15)+267.67
+            return math.exp(-1.29909-0.0129286*tau+4.9223e-6*(tau**2)- \
+                   1.986e-7*(tau**3))*1e-3
         
         else:
             return 11.021+0.038599*(T-273.15)
 
-    # Just overide the eta from Refrigerants for R134a - Sorry, deadline comming :'(
     def eta(self, T, P): 
         return self.etaRef(T, P)
 
-    # Just overide the kappa from Refrigerants for R134a - Sorry, deadline comming :'(
     def kappa(self, T, P):
         Tr = T/self.Tc
         ## Verify if it is fluid
@@ -384,7 +396,6 @@ class R134a(MartinHou, Refrigerant):
         else:
             return (0.01212+0.000096*(T-273.15))*0.99
 
-    # Need to integrate relations and so on from Eos - Sorry, deadline comming :'(
     def cp(self, T, P):
         Tr = T/self.Tc
         ## Verify if it is fluid
