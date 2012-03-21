@@ -276,11 +276,7 @@ class Refrigerant:
 
     def eta(self, T, P): #TODO!
         '''
-        Model from: Model for the Viscosity and Thermal Conductivity of Refrigerants,
-        Including a New Correlation for the Viscosity of R134a.
-        Marcia L. Huber,* Arno Laesecke, and Richard A. Perkins
-        
-        Ind. Eng. Chem. Res. 2003, 42, 3163-3178
+        Compute viscosity
 
         USAGE:
 
@@ -290,7 +286,31 @@ class Refrigerant:
         
         '''
 
-        pass
+        Ts=1.2593*(T/self.Tc)
+        Vcmol = self.Vc*1e6/(1000/self.MW)
+        rhomol = self.rho(T, P)*(1000/self.MW)/1e6
+        y = rhomol*Vcmol/6
+        mur = 131.3*(self.mu)/((Vcmol*self.Tc)**0.5)
+        mur4 = mur**4
+        E1 = 6.324 +50.412*self.omega -51.680*mur4 +1189.0*self.kappa
+        E2 = 1.21e-3 -1.154e-3*self.omega -6.257e-3*mur4 +0.03728*self.kappa
+        E3 = 5.283 +254.209*self.omega -168.48*mur4 +3898.0*self.kappa
+        E4 = 6.623 +38.096*self.omega -8.464*mur4 +31.42*self.kappa
+        E5 = 19.745 +7.630*self.omega -14.354*mur4 +31.53*self.kappa
+        E6 = -1.9 -12.537*self.omega +4.985*mur4 -18.15*self.kappa
+        E7 = 24.275 +3.450*self.omega -11.291*mur4 +69.35*self.kappa
+        E8 = 0.7972 +1.117*self.omega +0.01235*mur4 -4.117*self.kappa
+        E9 = -0.2382 +0.06770*self.omega -0.8163*mur4 +4.025*self.kappa
+        E10 = 0.06863 +0.3479*self.omega +0.5926*mur4 -0.727*self.kappa
+        G1 = (1-(0.5*y))/((1-y)**3)        
+        G2 = (E1*((1-math.exp(-E4*y))/y)+E2*G1*math.exp(E5*y)+E3*G1)/(E1*E4+E2+E3)
+        omegav = 1.16145*(Ts**-0.14874) + 0.52487*math.exp(-0.77320*Ts)+ \
+                2.16178*math.exp(-2.43787*Ts)
+        Fc = 1 -0.2756*self.omega +0.059035*(mur**4) + self.kappa
+        etaSS =  E7*(y**2)*G2*math.exp(E8+E9/Ts + E10/(Ts**2))
+        etaS = (Ts**0.5/omegav)*(Fc*(1/G2 + E6*y)) + etaSS
+
+        return etaS*36.344*((self.MW*self.Tc)**0.5)/(Vcmol**2/3.)
 
     def kappa(self, T, P): #TODO!
         '''
@@ -374,21 +394,30 @@ class R134a(MartinHou, Refrigerant):
         self.sZ = 1.79
         self.sm = 1.26
 
-    def etaRef(self, T, P):
-        Tr = T/self.Tc
-        tau = T-273.15
-        ## Verify if it is fluid
-        if(Tr <1.0 and P >= self.Psat(T)):
-            return math.exp(-1.29909-0.0129286*tau+4.9223e-6*(tau**2)- \
-                   1.986e-7*(tau**3))*1e-3
+    # def etaRef(self, T, P):
+    #     Tr = T/self.Tc
+    #     tau = T-273.15
+    #     ## Verify if it is fluid
+    #     if(Tr <1.0 and P >= self.Psat(T)):
+    #         return math.exp(-1.29909-0.0129286*tau+4.9223e-6*(tau**2)- \
+    #                1.986e-7*(tau**3))*1e-3
+    #     
+    #     else:
+    #         return 11.021+0.038599*(T-273.15)
+
+    # def eta(self, T, P): 
+    #     return self.etaRef(T, P)
+
+    def k(self, T, P):
+        '''
+        Compute thermal conductivity from temperature T[K] and pressure P[kPa]
         
-        else:
-            return 11.021+0.038599*(T-273.15)
-
-    def eta(self, T, P): 
-        return self.etaRef(T, P)
-
-    def kappa(self, T, P):
+        USAGE:
+            >>> from CPROP import R134a
+            >>> r = R134a()
+            >>> r.k(300,100)
+            
+        '''
         Tr = T/self.Tc
         ## Verify if it is fluid
         if(Tr <1.0 and P >= self.Psat(T)):
